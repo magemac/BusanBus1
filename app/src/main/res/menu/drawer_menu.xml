@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+        <item
+            android:id="@+id/nav_camera"
+                android:icon="@mipmap/bus"
+                android:title="menu1">
+
+        </item>
+
+        <item
+            android:id="@+id/nav_gallery"
+            android:icon="@mipmap/bus"
+            android:title="menu2">
+
+        </item>
+
+        <item
+            android:id="@+id/nav_menu"
+            android:icon="@mipmap/bus"
+            android:title="menu3">
+
+        </item>
+
+</menu>

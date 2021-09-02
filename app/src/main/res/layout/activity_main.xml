@@ -1,99 +1,99 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-
-    android:orientation="vertical"
-    android:weightSum="10"
     tools:context=".MainActivity">
 
-    <LinearLayout
+    <androidx.appcompat.widget.LinearLayoutCompat
+
+        android:id="@+id/linearLayout"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center"
-        android:orientation="vertical">
+        android:layout_height="50dp"
+        android:orientation="horizontal"
+        android:weightSum="10"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="언제 도착하지?"
-            android:textColor="#ffffffff"
-            android:textSize="40dp" />
-
-        <com.google.android.material.bottomnavigation.BottomNavigationView
-            android:id="@+id/bottomNav"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            app:menu="@menu/menu" />
-    </LinearLayout>
-
-<FrameLayout
-    android:id="@+id/fragment_container_view_tag"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content">
-
-</FrameLayout>
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="4"
-        android:orientation="vertical"
-        android:weightSum="5">
 
         <EditText
-            android:id="@+id/busNum"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="2"
-            android:background="@null"
-            android:ems="10"
-            android:hint="버스 번호를 입력해주세요."
-            android:inputType="textPersonName"
-            android:text=""
-
-            android:textColorHint="#D5D5D5" />
-
-        <EditText
-            android:id="@+id/stationArsno"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="2"
-            android:background="@null"
-            android:ems="10"
-            android:hint="정류장 번호를 입력해주세요."
-            android:inputType="textPersonName"
-            android:text=""
-
-            android:textColorHint="#D5D5D5" />
-
+            android:id="@+id/editSearch"
+            android:layout_width="300dp"
+            android:layout_height="match_parent"
+            android:background="@color/white"
+            android:hint="정류장, 버스번호 검색"
+            android:inputType="textShortMessage"
+            android:privateImeOptions="defaultInputmode=korean;"
+            android:textSize="15dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/searchButton"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <Button
-            android:id="@+id/button"
-            android:layout_width="wrap_content"
-            android:layout_height="0dp"
-            android:layout_gravity="center"
-            android:layout_weight="1"
-            android:onClick="search"
-            android:text="검색하기" />
-    </LinearLayout>
+            android:id="@+id/searchButton"
+            android:layout_width="108dp"
+            android:layout_height="match_parent"
+            android:text="검색"
+            android:textSize="12sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
-    <ScrollView
+    </androidx.appcompat.widget.LinearLayoutCompat>
+
+    <!--<androidx.appcompat.widget.LinearLayoutCompat
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="5">
+        android:layout_height="300dp"
+        app:layout_constraintBottom_toTopOf="@+id/map_view"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/linearLayout">
 
-        <TextView
-            android:id="@+id/showInfo"
+        <ScrollView
+            android:id="@+id/scrollView2"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text=""
+            android:layout_height="250dp"
+            app:layout_constraintBottom_toTopOf="@+id/map_view"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.654">
 
-            android:textSize="20dp" />
-    </ScrollView>
+            <TextView
+                android:id="@+id/result"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:textSize="30dp"
+                android:textStyle="bold" />
 
-</LinearLayout>
+        </ScrollView>
+    </androidx.appcompat.widget.LinearLayoutCompat>-->
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/map_view"
+        android:layout_width="match_parent"
+        android:layout_height="600dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/linearLayout"
+        app:layout_constraintVertical_bias="1.0" />
 
 
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNavigation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@color/black"
+        app:itemIconTint="@color/white"
+        app:itemTextColor="@color/white"
+        app:menu="@menu/bottom_navigation"/>
+
+</FrameLayout>

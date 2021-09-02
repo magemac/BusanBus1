@@ -1,388 +1,281 @@
 package com.cos.busanbus;
 
-
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.Signature;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
-import android.view.WindowManager;
+import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
-import android.widget.FrameLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.Fragment;
+
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+
+import net.daum.mf.map.api.MapPOIItem;
+import net.daum.mf.map.api.MapPoint;
+import net.daum.mf.map.api.MapReverseGeoCoder;
+import net.daum.mf.map.api.MapView;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
 
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URL;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-public class MainActivity extends AppCompatActivity implements InitMethod{
-    private FrameLayout fragment_container_view_tag;
-    private BottomNavigationView bottomNav;
-    private final String TAG = "myTag";
-
-    private final String key = "WyP9pjBjktC%2Bea2fFObCERMWEwTJGwwsRMr1YeyFGuqKZSnQwmKcnk1n3ZKf6L8UMGjCSZ4HZDCC%2BSQol89tjQ%3D%3D";
-
-    //FDNF6JMfFFTFBHH2nJKqLNKoJMl1VumD3J1LC7xcc%2BuB8I2uLgYWh83d%2FNZ%2FaUHGk%2BgT0BChBBcuds7YYcvXqw%3D%3D
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 
-    private final String endPoint = "http://61.43.246.153/openapi-data/service/busanBIMS2";
+public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "Main";
+    private static final String LOG_TAG = "MainActivity";
 
-    //xml 변수
-    private EditText xmlBusNum;
-    private EditText xmlStationArsno;
-    private TextView xmlShowInfo;
-
-    // 파싱을 위한 필드 선언
-    private URL url;
-    private InputStream is;
-    private XmlPullParserFactory factory;
-    private XmlPullParser xpp;
-    private String tag;
-    private int eventType;
-
-    // xml의 값 입력 변수
-    private String busNum; // 버스 번호
-    private String stationArsno = ""; //출발 정류장 arsNo
-    private StringBuffer buffer;
-    // 데이터 검색
-    private String busNumId; // 버스 번호 Id
-    private String stationId;// 출발 정류소명 Id
-    private String sStationArriveTime; // 버스의 정류장 도착정보
-
-    private String car1;
-    private String min1;
-    private String station1;
-    private String car2;
-    private String min2;
-    private String station2;
-
+    private MainActivity mContext = this;
+    private MapView mapView;
+    private ViewGroup mapViewContainer;
+    private BottomNavigationView bottomNavigationView;
+    private EditText edit;
+    private TextView text;
+    private Button search;
+    taskDataBustop td;
+    String key = "http://61.43.246.153/openapi-data/service/busanBIMS2/busStop?arsno=13123&pageNo=1&numOfRows=10&ServiceKey=FDNF6JMfFFTFBHH2nJKqLNKoJMl1VumD3J1LC7xcc%2BuB8I2uLgYWh83d%2FNZ%2FaUHGk%2BgT0BChBBcuds7YYcvXqw%3D%3D";
+    String data;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //상태바 없애기(FullScreen)
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
 
-        //xml 아이디 얻어오기
-        getXmlId();
-        buffer = new StringBuffer();
-    }
-    //검색하기 onclick버튼
-    public void search(View view) {
-        //사용자한테 출발정류장, 도착정류장 알아오기.
-        busNum = xmlBusNum.getText().toString();
-        stationArsno = xmlStationArsno.getText().toString();
-        car1 = min1 = station1 = car2 = min2 = station2 = null;
-        buffer = null;
-        buffer = new StringBuffer();
-        xmlShowInfo.setText("");
+        edit = findViewById(R.id.editSearch);
+        text = findViewById(R.id.result);
+        search = findViewById(R.id.searchButton);
 
-        //입력값 검사 함수
-        if(exmineData()) {
-            // 입력값 검사 함수에서 true를 return할 경우 값이 잘못된 것..
-            // 종료..
-            return;
+        mapView = new MapView(mContext);
+        mapViewContainer = findViewById(R.id.map_view);
+        mapViewContainer.addView(mapView);
+
+        // 중심점 변경
+        mapView.setMapCenterPoint(MapPoint.mapPointWithGeoCoord(35.15601700819226, 129.0594790151887), true);
+
+        // 줌 레벨 변경
+        mapView.setZoomLevel(3, true);
+
+        // 중심점 변경 + 줌 레벨 변경
+        mapView.setMapCenterPointAndZoomLevel(MapPoint.mapPointWithGeoCoord(35.15601700819226, 129.0594790151887), 2, true);
+
+        // 줌 인
+        mapView.zoomIn(true);
+
+        // 줌 아웃
+        mapView.zoomOut(true);
+
+        //마커 1
+        MapPOIItem marker = new MapPOIItem();
+        MapPoint MARKER_POINT = MapPoint.mapPointWithGeoCoord(35.15601700819226,129.0594790151887);
+        marker.setItemName("Default Marker");
+        marker.setTag(0);
+        marker.setMapPoint(MARKER_POINT);
+        marker.setMarkerType(MapPOIItem.MarkerType.BluePin); // 기본으로 제공하는 BluePin 마커 모양.
+        marker.setSelectedMarkerType(MapPOIItem.MarkerType.RedPin); // 마커를 클릭했을때, 기본으로 제공하는 RedPin 마커 모양.
+
+//      mapView.addPOIItem(marker);
+
+        //마커 2
+        MapPOIItem marker2 = new MapPOIItem();
+        MapPoint MARKER_POINT2 = MapPoint.mapPointWithGeoCoord(35.15601700819226,129.0594790151887);
+        marker.setItemName("Default Marker");
+        marker.setTag(0);
+        marker.setMapPoint(MARKER_POINT2);
+        marker.setMarkerType(MapPOIItem.MarkerType.BluePin); // 기본으로 제공하는 BluePin 마커 모양.
+        marker.setSelectedMarkerType(MapPOIItem.MarkerType.RedPin); // 마커를 클릭했을때, 기본으로 제공하는 RedPin 마커 모양.
+
+        mapView.addPOIItem(marker2);
+
+        MapPOIItem [] markers = new MapPOIItem[2];
+        markers[0]=marker;
+        markers[1]=marker2;
+
+
+        for(int i=0;i<markers.length;i++){
+            mapView.addPOIItem(markers[i]);
         }
 
-        new Thread(new Runnable() {
+
+        edit.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void run() {
-                // 검색한 버스 id 얻기
-                // 오퍼레이션 2
-                getBusId(busNum);
+            public void onClick(View v) {
 
-                //검색한 정류장 얻기
-                //오퍼레이션 1
-                getStationId(stationArsno);
-
-                //버스가 언제오는지 확인
-                //오퍼레이션 5
-                userWant(busNumId, stationId);
-
-                // UI setText 하는 곳..
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Log.d(TAG, car1 + " " + min1 + " " + station1);
-                        Log.d(TAG, car2 + " " + min2 + " " + station2);
-                        if(car1 == null) {
-                            buffer.append("도착 정보 없음");
-                        } else {
-                            buffer.append("첫번째 차량 도착 정보\n");
-                            buffer.append("차량 번호 : " + car1 + " \n");
-                            buffer.append("남은 시간 : " + min1 + " 분 \n");
-                            buffer.append("남은 구간 : " + station1 + "정거장\n");
-                        }
-                        // 두번째 도착 차량은 null이 아닐 경우에만 출력
-                        if(car2 != null) {
-                            buffer.append("-------------------------\n");
-                            buffer.append("두번째 차량 도착 정보\n");
-                            buffer.append("차량 번호 : " + car2 + " \n");
-                            buffer.append("남은 시간 : " + min2 + "분 \n");
-                            buffer.append("남은 구간 : " + station2 + "정거장 \n");
-                        }
-                        xmlShowInfo.setText(buffer.toString());
-                    }
-                });
             }
-        }).start();
+        });
+
+
+        search.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+
+                td = new taskDataBustop();
+                td.execute(edit.getText().toString());
+                edit.setText("");
+            }
+        });
+        init();
+        initLr();
+        /*getHashKey(); // 해시키 받는 함수*/
     }
 
-    //정류소명을 입력하면 정류장 ID를 돌려줌
-    /*
-     * 오퍼레이션 1
-     * 정류소명, 정류소ARS번호를 기준으로 정류소ID, 정류소명, GPS좌표, 정류소구분(일반, 마을)을
-     * 조회하는 정류소정보 조회 서비스
-     */
-    public void getStationId(String station) {
-        String stationUrl = endPoint + "/busStop?arsno=" + station + "&serviceKey=" + key;
-        Log.d(TAG, "정류장명 -> 정류장Id : " + stationUrl);
 
+    public class taskDataBustop extends AsyncTask<String, Void, String> {
+
+        @Override
+        protected String doInBackground(String... search) {
+            String str = edit.getText().toString();
+            String url = "http://61.43.246.153/openapi-data/service/busanBIMS2/busStop?resultCode=00&pageNo=1&numOfRows=10&ServiceKey=FDNF6JMfFFTFBHH2nJKqLNKoJMl1VumD3J1LC7xcc%2BuB8I2uLgYWh83d%2FNZ%2FaUHGk%2BgT0BChBBcuds7YYcvXqw%3D%3D";
+            XmlPullParserFactory factory;
+            XmlPullParser parser;
+            URL xmlUrl;
+            String returnResult = "a";
+            String gpsX = "";
+            String gpsY = "";
+            String searchData = "";
+            try {
+                boolean flag1 = false;
+                boolean flagGPSX = false;
+                boolean flagGPSY = false;
+
+                xmlUrl = new URL(url);
+                xmlUrl.openConnection().getInputStream();
+                factory = XmlPullParserFactory.newInstance();
+                parser = factory.newPullParser();
+                parser.setInput(xmlUrl.openStream(), "utf-8");
+                int eventType = parser.getEventType();
+                while (eventType != XmlPullParser.END_DOCUMENT) {
+                    switch (eventType) {
+                        case XmlPullParser.START_DOCUMENT:
+                            break;
+                        case XmlPullParser.END_DOCUMENT:
+                            break;
+                        case XmlPullParser.START_TAG:
+                            if (parser.getName().equals("bstopArsno")) {
+                                flag1 = true;
+                            } else if(parser.getName().equals("bstopNm")){
+                                flag1 = true;
+                            } else if(parser.getName().equals("gpsX")){
+                                flagGPSX = true;
+                            } else if(parser.getName().equals("gpsY")){
+                                flagGPSY = true;
+
+                            }
+                            break;
+                        case XmlPullParser.END_TAG:
+                            break;
+                        case XmlPullParser.TEXT:
+                            if (flag1 == true) {
+                                returnResult += parser.getText() + "\n";
+                                flag1 = false;
+
+                            } else if(flagGPSX == true){
+                                gpsX = parser.getText() + "/n";
+                                System.out.println("X좌표: " + gpsX);
+                                flagGPSX = false;
+
+                            } else if(flagGPSY == true){
+                                gpsY = parser.getText() + "/n";
+                                System.out.println("Y좌표: " + gpsY);
+                                flagGPSY = false;
+                            }
+                            break;
+                    }
+                    eventType = parser.next();
+                }
+            } catch (Exception e) {
+
+            }
+
+            System.out.println("totalResult : " + returnResult);
+            return returnResult;
+
+            /*for(int i=0; i<returnResult.length(); i++){
+                if(returnResult.equals(edit.getText())){
+                    searchData += edit.getText() + "/n";
+                }
+            }
+
+            System.out.println("searchData : " + searchData);*/
+
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            text.setText(result);
+        }
+    }
+
+    /*private void getHashKey(){
+        PackageInfo packageInfo = null;
         try {
-            setUrlNParser(stationUrl);
-
-            while (eventType != XmlPullParser.END_DOCUMENT) {
-                switch (eventType) {
-                    case XmlPullParser.START_DOCUMENT:
-                        break;
-                    case XmlPullParser.START_TAG:
-                        tag = xpp.getName();
-
-                        if (tag.equals("item")) ; //첫번째 검색 결과
-                        else if (tag.equals("bstopId")) {
-                            xpp.next();
-                            stationId = xpp.getText();
-                        } else if (tag.equals("bstopArsno")) ;
-                        else if (tag.equals("bstopNm")) ;
-                        else if (tag.equals("gpsX")) ;
-                        else if (tag.equals("gpsY")) ;
-                        else if (tag.equals("stoptype")) ;
-                        break;
-                    case XmlPullParser.TEXT:
-                        break;
-                    case XmlPullParser.END_TAG:
-                        tag = xpp.getName();
-                        if (tag.equals("item")); // 첫번째 검색 결과 종료.. 줄바꿈
-                        break;
-                } //end of switch~case
-
-                eventType = xpp.next();
-            } //end of while
-        } catch (Exception e) {
+            packageInfo = getPackageManager().getPackageInfo(getPackageName(), PackageManager.GET_SIGNATURES);
+        } catch (PackageManager.NameNotFoundException e) {
             e.printStackTrace();
         }
-        //return buffer.toString(); //정류장 이름에 해당하는 id를 넘겨줌
-    }
+        if (packageInfo == null)
+            Log.e("KeyHash", "KeyHash:null");
 
-    //버스 번호를 입력하면 버스 ID를 돌려줌
-    /*
-     * 오퍼레이션 2
-     * 노선ID, 노선번호를 기준으로 버스종류, 회사이름, 출/도착지, 첫/막차시간, 배차간격을 조회하는 노선정보 조회 서비스
-     */
-    public void getBusId(String busNum) {
-        String busNumUrl = endPoint + "/busInfo?lineno=" + busNum + "&serviceKey=" + key;
-        Log.d(TAG,"버스번호 -> 버스id : " + busNumUrl);
-
-        try {
-            setUrlNParser(busNumUrl);
-
-            while (eventType != XmlPullParser.END_DOCUMENT) {
-                switch (eventType) {
-                    case XmlPullParser.START_DOCUMENT:
-                        break;
-                    case XmlPullParser.START_TAG:
-                        tag = xpp.getName();
-
-                        if (tag.equals("item")) ; //첫번째 검색 결과
-                        else if (tag.equals("lineId")) {
-                            xpp.next();
-                            busNumId = xpp.getText();
-                        }
-                        else if (tag.equals("buslinenum")) ;
-                        else if (tag.equals("bustype")) ;
-                        else if (tag.equals("companyid")) ;
-                        else if (tag.equals("endpoint")) ;
-                        else if (tag.equals("stoptype")) ;
-                        else if (tag.equals("firsttime")) ;
-                        else if (tag.equals("endtime")) ;
-                        else if (tag.equals("headway")) ;
-                        else if (tag.equals("headwayNorm")) ;
-                        else if (tag.equals("headwayPeak")) ;
-                        else if (tag.equals("headwayHoli")) ;
-                        break;
-                    case XmlPullParser.TEXT:
-                        break;
-                    case XmlPullParser.END_TAG:
-                        tag = xpp.getName();
-                        if (tag.equals("item")); // 첫번째 검색 결과 종료.. 줄바꿈
-                        break;
-                } //end of switch~case
-                eventType = xpp.next();
-            } //end of while
-        } catch (Exception e) {
-            e.printStackTrace();
+        for (Signature signature : packageInfo.signatures) {
+            try {
+                MessageDigest md = MessageDigest.getInstance("SHA");
+                md.update(signature.toByteArray());
+                Log.d("KeyHash", Base64.encodeToString(md.digest(), Base64.DEFAULT));
+            } catch (NoSuchAlgorithmException e) {
+                Log.e("KeyHash", "Unable to get MessageDigest. signature=" + signature, e);
+            }
         }
-    }
+    }*/
 
-    /*
-     * 오퍼레이션 5
-     * 정류소 ID, 노선 ID를 기준으로 실시간 도착정보인 차량번호, 남은 도착시간, 남은 정류장 수
-     * 저상버스유무를 인접버스 두 대에 대해 조회하는 노선 정류소 도착정보 조회 서비스
-     */
-    public void userWant(String busNumId, String stationId) {
-        String dataUrl = endPoint + "/busStopArr?bstopid=" + stationId + "&lineid=" + busNumId + "&serviceKey=" + key;
-        Log.d(TAG, dataUrl);
-
-        try {
-            setUrlNParser(dataUrl);
-
-            while (eventType != XmlPullParser.END_DOCUMENT) {
-                switch (eventType) {
-                    case XmlPullParser.START_DOCUMENT:
-                        break;
-                    case XmlPullParser.START_TAG:
-                        tag = xpp.getName();
-
-                        if (tag.equals("item")) ; //첫번째 검색 결과
-                        else if (tag.equals("carNo1")) {
-                            xpp.next();
-                            car1 = xpp.getText();
-                        } else if (tag.equals("min1")) {
-                            xpp.next();
-                            min1 = xpp.getText();
-                        } else if (tag.equals("station1")) {
-                            xpp.next();
-                            station1 = xpp.getText();
-                        } else if (tag.equals("carNo2")) {
-                            xpp.next();
-                            car2 = xpp.getText();
-                        } else if (tag.equals("min2")) {
-                            xpp.next();
-                            min2 = xpp.getText();
-                        } else if (tag.equals("station2")) {
-                            xpp.next();
-                            station2 = xpp.getText();
-                        }else if (tag.equals("bstopId")) ;
-                        else if (tag.equals("nodeNm")) ;
-                        else if (tag.equals("companyid")) ;
-                        else if (tag.equals("gpsX")) ;
-                        else if (tag.equals("gpsY")) ;
-                        else if (tag.equals("bustype")) ;
-                        else if (tag.equals("lineid")) ;
-                        else if (tag.equals("bstopidx")) ;
-                        break;
-                    case XmlPullParser.TEXT:
-                        break;
-                    case XmlPullParser.END_TAG:
-                        tag = xpp.getName();
-                        if (tag.equals("item")); // 첫번째 검색 결과 종료.. 줄바꿈
-                        break;
-                } //end of switch~case
-                eventType = xpp.next();
-            } //end of while
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    // 사용자가 입력한 값을 검사하는 함수
-    public boolean exmineData() {
-
-        // 사용자가 하나 이상의 값을 입력하지 않은 경우
-        if (busNum.equals("") || stationArsno.equals("")) {
-            Toast.makeText(this, "값을 입력해주세요!", Toast.LENGTH_SHORT).show();
-            return true;
-        }
-
-        //String[] arr = new String[] {busNum, stationArsno};
-        String regExp = "([0-9])"; // 입력값은 반드시 숫자여야하므로 정규 표현식으로 설정
-        Pattern pattern_symbol = Pattern.compile(regExp);
-
-        //버스 번호 유효성 검사
-        Matcher matcher_busNum = pattern_symbol.matcher(busNum); // 입력값이 유효하다면 true return
-        if(matcher_busNum.find() == false) {
-            Toast.makeText(this, "버스 번호를 다시 입력해주세요!", Toast.LENGTH_SHORT).show();
-            return true;
-        }
-        //정류장 번호 유효성 검사
-        Matcher matcher_stationArsno = pattern_symbol.matcher(stationArsno); // 입력값이 유효하다면 true return
-        if(matcher_stationArsno.find() == false) {
-            Toast.makeText(this, "정류장 번호를 다시 입력해주세요!", Toast.LENGTH_SHORT).show();
-            return true;
-        }
-
-        return false; //모든 값이 정상
-    }
-
-    // Url, XmlPullParser 객체 생성 및 초기화
-    public void setUrlNParser(String quary) {
-        try {
-            url = new URL(quary); //문자열로 된 요청 url을 URL객체로 생성
-            is = url.openStream();
-
-            factory = XmlPullParserFactory.newInstance();
-            xpp = factory.newPullParser();
-            xpp.setInput(new InputStreamReader(is, "UTF-8")); //inputStream으로부터 xml입력받기
-
-            xpp.next();
-            eventType = xpp.getEventType();
-        } catch (Exception e) {
-
-        }
-
-    }
-
-    // UI ID 얻는 함수
-    public void getXmlId() {
-        xmlBusNum = findViewById(R.id.busNum);
-        xmlStationArsno = findViewById(R.id.stationArsno);
-        xmlShowInfo = findViewById(R.id.showInfo);
-        Log.d(TAG, "getXmlId: 가져옴");
-    }
-
-    @Override
-    public void init() {
-        bottomNav=findViewById(R.id.bottomNav);
-        fragment_container_view_tag = findViewById(R.id.fragment_container_view_tag);
-    }
-
-    @Override
-    public void initLr() {
-bottomNav.setOnItemSelectedListener(item -> {
-    Fragment selectedFragment = null;
-    switch (item.getItemId()){
-        case R.id.navBus:
-            selectedFragment = new Frag1();
-            break;
-        case R.id.navFav:
-            selectedFragment = new Frag2();
-            break;
-        case R.id.navStation:
-                selectedFragment = new Frag3();
-        break;
-    }
-    getSupportFragmentManager().beginTransaction()
-            .replace(R.id.fragment_container_view_tag,selectedFragment)
-            .commit();
-    return true;
-});
-    }
-
-    @Override
-    public void initData() {
-
-    }
+private void init(){
+bottomNavigationView = findViewById(R.id.bottomNavigation);
 }
+private void initLr(){
+        search.setOnClickListener(v -> {
+            MyData.data="넘어가냐?";
+            Intent intent = new Intent(
 
-
+                    mContext,
+                    ListActivity2.class
+            );
+            startActivity(intent);
+        });
+    bottomNavigationView.setOnItemSelectedListener((item -> {
+        switch (item.getItemId()){
+            case R.id.search_icon:
+                Log.d(TAG, "initLr: search 클릭됨" );
+                Intent intent =new Intent(
+                        MainActivity.this,
+                        ListActivity2.class
+                );
+                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(intent);
+                finish();
+                break;
+            case R.id.map_icon:
+                Log.d(TAG, "initLr: map 클릭됨" );
+                Intent intent1 =new Intent(
+                        MainActivity.this,
+                        MainActivity.class
+                );
+                intent1.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(intent1);
+                finish();
+                break;
+        }
+        return true;
+    }));
+}
+}
